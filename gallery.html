@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Salsa — Move Gallery</title>
+<style>
+  body { font-family:-apple-system,Helvetica,Arial,sans-serif; background:#14171c;
+         color:#e8e8e8; margin:0; padding:32px; }
+  h1 { margin:0 0 4px; font-size:22px; }
+  h2 { margin:30px 0 4px; font-size:17px; border-bottom:1px solid #2c333d; padding-bottom:6px;
+       scroll-margin-top:16px; }
+  .sub { color:#9aa0a8; margin:0 0 6px; font-size:14px; line-height:1.55; }
+  .toolbar { display:flex; gap:10px; align-items:center; margin:16px 0 4px; flex-wrap:wrap; }
+  button { background:#2c333d; color:#e8e8e8; border:1px solid #3a434f; border-radius:6px;
+           padding:8px 14px; font-size:13px; cursor:pointer; }
+  button:hover { background:#384150; }
+  .status { color:#7c8694; font-size:12px; }
+  .nav { margin:10px 0 0; font-size:13px; }
+  .nav a { color:#5b8def; text-decoration:none; margin-right:14px; }
+  .grid { display:grid; gap:20px; grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+          margin-top:14px; }
+  .card { background:#1e232b; border:1px solid #2c333d; border-radius:10px; overflow:hidden; }
+  .card video { width:100%; display:block; background:#000; }
+  .body { padding:12px 14px 14px; }
+  .num { color:#6b7280; font-size:11.5px; letter-spacing:.03em; margin-bottom:2px; }
+  .num b { color:#aab0b8; font-size:13px; letter-spacing:.06em; }
+  .name-input { width:100%; box-sizing:border-box; background:#14171c; border:1px solid #2c333d;
+     color:#e8e8e8; font-size:15px; font-weight:600; padding:7px 9px; border-radius:6px;
+     margin:8px 0 6px; }
+  .desc-input { width:100%; box-sizing:border-box; background:#14171c; border:1px solid #2c333d;
+     color:#cfd4da; font-size:13px; padding:7px 9px; border-radius:6px; min-height:70px;
+     resize:vertical; font-family:inherit; line-height:1.45; }
+  .name-input::placeholder, .desc-input::placeholder { color:#5a626d; }
+  .name-input:focus, .desc-input:focus { outline:none; border-color:#5b8def; }
+  footer { color:#6b7280; font-size:12px; margin-top:30px; line-height:1.5; }
+</style>
+</head>
+<body>
+<h1>Salsa — Move Gallery</h1>
+<p class="sub">
+  DanceSway Ballroom. Clips padded for lead-in / lead-out. Type a <b>name</b> and
+  <b>description</b> on each one — it saves automatically in this browser. Hit
+  <b>Export</b> when done and the file lands in Downloads for Claude to read back.
+</p>
+<div class="toolbar">
+  <button onclick="exportJSON()">⬇ Export annotations (JSON)</button>
+  <button onclick="copyMarkdown()">⧉ Copy as Markdown</button>
+  <span class="status" id="status">loading…</span>
+</div>
+<div class="nav" id="nav"></div>
+<div id="groups"></div>
+<footer>
+  Double-check timestamps: "flagged" is what you sent, "clip" is the padded range cut.<br>
+  Saved locally in this browser (localStorage). Export to make it portable.
+</footer>
+
+<script>
+const GROUPS = [
+  { group:"1", title:"Group 1 — IMG_4398 (14 sequences)", seqs:[
+    {id:"1.1",  range:"0:10–0:20", clip:"0:08–0:22", file:"clips/IMG_4398/1.1.mp4"},
+    {id:"1.2",  range:"0:20–0:27", clip:"0:18–0:29", file:"clips/IMG_4398/1.2.mp4"},
+    {id:"1.3",  range:"0:27–0:42", clip:"0:25–0:44", file:"clips/IMG_4398/1.3.mp4"},
+    {id:"1.4",  range:"0:42–0:57", clip:"0:40–0:59", file:"clips/IMG_4398/1.4.mp4"},
+    {id:"1.5",  range:"0:57–1:08", clip:"0:55–1:10", file:"clips/IMG_4398/1.5.mp4"},
+    {id:"1.6",  range:"1:08–1:25", clip:"1:06–1:27", file:"clips/IMG_4398/1.6.mp4"},
+    {id:"1.7",  range:"1:25–1:35", clip:"1:23–1:37", file:"clips/IMG_4398/1.7.mp4"},
+    {id:"1.8",  range:"1:35–1:45", clip:"1:33–1:47", file:"clips/IMG_4398/1.8.mp4"},
+    {id:"1.9",  range:"1:45–1:49", clip:"1:43–1:51", file:"clips/IMG_4398/1.9.mp4"},
+    {id:"1.10", range:"1:49–2:03", clip:"1:47–2:05", file:"clips/IMG_4398/1.10.mp4"},
+    {id:"1.11", range:"2:03–2:11", clip:"2:01–2:13", file:"clips/IMG_4398/1.11.mp4"},
+    {id:"1.12", range:"2:11–2:22", clip:"2:09–2:24", file:"clips/IMG_4398/1.12.mp4"},
+    {id:"1.13", range:"2:22–2:28", clip:"2:20–2:30", file:"clips/IMG_4398/1.13.mp4"},
+    {id:"1.14", range:"2:28–3:08", clip:"2:26–3:08", file:"clips/IMG_4398/1.14.mp4"},
+  ]},
+  { group:"2", title:"Group 2 — IMG_1086 (20 sequences)", seqs:[
+    {id:"2.1",  range:"0:22–0:32", clip:"0:20–0:34", file:"clips/IMG_1086/2.1.mp4"},
+    {id:"2.2",  range:"0:32–0:39", clip:"0:30–0:41", file:"clips/IMG_1086/2.2.mp4"},
+    {id:"2.3",  range:"0:39–0:47", clip:"0:37–0:49", file:"clips/IMG_1086/2.3.mp4"},
+    {id:"2.4",  range:"0:47–1:00", clip:"0:45–1:02", file:"clips/IMG_1086/2.4.mp4"},
+    {id:"2.5",  range:"1:00–1:13", clip:"0:58–1:15", file:"clips/IMG_1086/2.5.mp4"},
+    {id:"2.6",  range:"1:13–1:24", clip:"1:11–1:26", file:"clips/IMG_1086/2.6.mp4"},
+    {id:"2.7",  range:"1:24–1:36", clip:"1:22–1:38", file:"clips/IMG_1086/2.7.mp4"},
+    {id:"2.8",  range:"1:36–1:43", clip:"1:34–1:45", file:"clips/IMG_1086/2.8.mp4"},
+    {id:"2.9",  range:"1:43–1:48", clip:"1:41–1:50", file:"clips/IMG_1086/2.9.mp4"},
+    {id:"2.10", range:"1:53–2:00", clip:"1:51–2:02", file:"clips/IMG_1086/2.10.mp4"},
+    {id:"2.11", range:"2:00–2:07", clip:"1:58–2:09", file:"clips/IMG_1086/2.11.mp4"},
+    {id:"2.12", range:"2:07–2:25", clip:"2:05–2:27", file:"clips/IMG_1086/2.12.mp4"},
+    {id:"2.13", range:"2:27–2:39", clip:"2:25–2:41", file:"clips/IMG_1086/2.13.mp4"},
+    {id:"2.14", range:"2:39–2:47", clip:"2:37–2:49", file:"clips/IMG_1086/2.14.mp4"},
+    {id:"2.15", range:"2:47–3:00", clip:"2:45–3:02", file:"clips/IMG_1086/2.15.mp4"},
+    {id:"2.16", range:"3:12–3:24", clip:"3:10–3:26", file:"clips/IMG_1086/2.16.mp4"},
+    {id:"2.17", range:"3:24–3:45", clip:"3:22–3:47", file:"clips/IMG_1086/2.17.mp4"},
+    {id:"2.18", range:"3:59–4:06", clip:"3:57–4:08", file:"clips/IMG_1086/2.18.mp4"},
+    {id:"2.19", range:"4:06–4:13", clip:"4:04–4:15", file:"clips/IMG_1086/2.19.mp4"},
+    {id:"2.20", range:"4:14–4:22", clip:"4:12–4:24", file:"clips/IMG_1086/2.20.mp4"},
+  ]},
+  { group:"3", title:"Group 3 — IMG_2175 (7 sequences)", seqs:[
+    {id:"3.1", range:"0:14–0:22", clip:"0:12.5–0:23.5", file:"clips/IMG_2175/3.1.mp4"},
+    {id:"3.2", range:"0:22–0:33", clip:"0:20.5–0:34.5", file:"clips/IMG_2175/3.2.mp4"},
+    {id:"3.3", range:"0:33–0:48", clip:"0:31.5–0:49.5", file:"clips/IMG_2175/3.3.mp4"},
+    {id:"3.4", range:"0:47–0:57", clip:"0:45.5–0:58.5", file:"clips/IMG_2175/3.4.mp4"},
+    {id:"3.5", range:"0:57–1:22", clip:"0:55.5–1:23.5", file:"clips/IMG_2175/3.5.mp4"},
+    {id:"3.6", range:"1:22–1:35", clip:"1:20.5–1:36.5", file:"clips/IMG_2175/3.6.mp4"},
+    {id:"3.7", range:"1:50–2:04", clip:"1:48.5–2:05.5", file:"clips/IMG_2175/3.7.mp4"},
+  ]},
+];
+
+const KEY = "salsa-annotations-v1";
+let data = JSON.parse(localStorage.getItem(KEY) || "null");
+if(data === null){
+  // carry over annotations from the earlier Group-3-only gallery, if any
+  data = JSON.parse(localStorage.getItem("salsa-group3-v1") || "{}");
+  localStorage.setItem(KEY, JSON.stringify(data));
+}
+
+function setStatus(m){ document.getElementById("status").textContent = m; }
+
+function render(){
+  const root = document.getElementById("groups");
+  const nav = document.getElementById("nav");
+  root.innerHTML = ""; nav.innerHTML = "";
+  for(const g of GROUPS){
+    const a = document.createElement("a");
+    a.href = "#group" + g.group;
+    a.textContent = g.title;
+    nav.appendChild(a);
+
+    const sec = document.createElement("section");
+    sec.id = "group" + g.group;
+    const h = document.createElement("h2");
+    h.textContent = g.title;
+    sec.appendChild(h);
+
+    const grid = document.createElement("div");
+    grid.className = "grid";
+    for(const s of g.seqs){
+      const d = data[s.id] || {name:"", desc:""};
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML =
+        '<video src="' + s.file + '" loop muted playsinline preload="metadata"></video>' +
+        '<div class="body">' +
+          '<div class="num"><b>' + s.id + '</b> &nbsp; flagged ' + s.range +
+            ' &nbsp;·&nbsp; clip ' + s.clip + '</div>' +
+          '<input class="name-input" data-id="' + s.id + '" data-field="name" ' +
+            'placeholder="Move / sequence name…">' +
+          '<textarea class="desc-input" data-id="' + s.id + '" data-field="desc" ' +
+            'placeholder="Description — what happens, start → end positions, counts…"></textarea>' +
+        '</div>';
+      card.querySelector(".name-input").value = d.name || "";
+      card.querySelector(".desc-input").value = d.desc || "";
+      grid.appendChild(card);
+    }
+    sec.appendChild(grid);
+    root.appendChild(sec);
+  }
+  // only play videos that are on screen — keeps all clips smooth
+  const io = new IntersectionObserver(function(entries){
+    for(const e of entries){
+      if(e.isIntersecting) e.target.play().catch(function(){});
+      else e.target.pause();
+    }
+  }, {threshold:0.2});
+  document.querySelectorAll("video").forEach(function(v){ io.observe(v); });
+  setStatus("ready — edits save automatically");
+}
+
+document.addEventListener("input", function(e){
+  const t = e.target;
+  if(!t.dataset || !t.dataset.id) return;
+  if(!data[t.dataset.id]) data[t.dataset.id] = {name:"", desc:""};
+  data[t.dataset.id][t.dataset.field] = t.value;
+  localStorage.setItem(KEY, JSON.stringify(data));
+  setStatus("✓ saved " + new Date().toLocaleTimeString());
+});
+
+function exportJSON(){
+  const out = [];
+  for(const g of GROUPS){
+    for(const s of g.seqs){
+      const d = data[s.id] || {};
+      out.push({ group:g.group, id:s.id, flagged:s.range, clip:s.clip, file:s.file,
+                 name:d.name||"", description:d.desc||"" });
+    }
+  }
+  const blob = new Blob([JSON.stringify(out,null,2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "salsa-annotations.json";
+  a.click();
+  setStatus("exported salsa-annotations.json to Downloads");
+}
+
+function copyMarkdown(){
+  let md = "# Salsa — Move Annotations\n\n";
+  for(const g of GROUPS){
+    md += "# " + g.title + "\n\n";
+    for(const s of g.seqs){
+      const d = data[s.id] || {name:"", desc:""};
+      md += "## " + s.id + " — " + (d.name || "(unnamed)") + "\n";
+      md += "_Flagged " + s.range + " · clip " + s.clip + "_\n\n";
+      md += (d.desc || "(no description)") + "\n\n";
+    }
+  }
+  navigator.clipboard.writeText(md).then(
+    function(){ setStatus("Markdown copied to clipboard"); },
+    function(){ setStatus("couldn't copy — use the JSON export instead"); }
+  );
+}
+
+render();
+</script>
+</body>
+</html>

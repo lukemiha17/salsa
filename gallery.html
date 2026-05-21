@@ -144,7 +144,8 @@ function render(){
       const card = document.createElement("div");
       card.className = "card";
       card.innerHTML =
-        '<video src="' + s.file + '" controls loop muted playsinline preload="metadata"></video>' +
+        '<video src="' + s.file + '" poster="posters/' + s.id + '.jpg" ' +
+          'controls loop muted playsinline preload="none"></video>' +
         '<div class="controls">' +
           '<button data-action="restart" title="Restart">⟲ restart</button>' +
           '<button data-action="back" title="Back 2 seconds">« 2s</button>' +

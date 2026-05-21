@@ -12,9 +12,9 @@
        scroll-margin-top:16px; }
   .sub { color:#9aa0a8; margin:0 0 6px; font-size:14px; line-height:1.55; }
   .toolbar { display:flex; gap:10px; align-items:center; margin:16px 0 4px; flex-wrap:wrap; }
-  button { background:#2c333d; color:#e8e8e8; border:1px solid #3a434f; border-radius:6px;
+  .toolbar button { background:#2c333d; color:#e8e8e8; border:1px solid #3a434f; border-radius:6px;
            padding:8px 14px; font-size:13px; cursor:pointer; }
-  button:hover { background:#384150; }
+  .toolbar button:hover { background:#384150; }
   .status { color:#7c8694; font-size:12px; }
   .nav { margin:10px 0 0; font-size:13px; }
   .nav a { color:#5b8def; text-decoration:none; margin-right:14px; }
@@ -22,7 +22,13 @@
           margin-top:14px; }
   .card { background:#1e232b; border:1px solid #2c333d; border-radius:10px; overflow:hidden; }
   .card video { width:100%; display:block; background:#000; }
-  .body { padding:12px 14px 14px; }
+  .controls { display:flex; flex-wrap:wrap; gap:4px; padding:9px 12px 2px; align-items:center; }
+  .controls button { background:#2c333d; color:#cfd4da; border:1px solid #3a434f; border-radius:5px;
+     padding:4px 7px; font-size:11px; cursor:pointer; line-height:1.3; }
+  .controls button:hover { background:#384150; }
+  .controls button.on { background:#5b8def; color:#fff; border-color:#5b8def; }
+  .controls .sp { margin-left:auto; display:flex; gap:3px; }
+  .body { padding:8px 14px 14px; }
   .num { color:#6b7280; font-size:11.5px; letter-spacing:.03em; margin-bottom:2px; }
   .num b { color:#aab0b8; font-size:13px; letter-spacing:.06em; }
   .name-input { width:100%; box-sizing:border-box; background:#14171c; border:1px solid #2c333d;
@@ -39,9 +45,9 @@
 <body>
 <h1>Salsa — Move Gallery</h1>
 <p class="sub">
-  DanceSway Ballroom. Clips padded for lead-in / lead-out. Type a <b>name</b> and
-  <b>description</b> on each one — it saves automatically in this browser. Hit
-  <b>Export</b> when done and the file lands in Downloads for Claude to read back.
+  DanceSway Ballroom. Each clip has full controls — play/pause, scrub to rewind,
+  jump ±2 s, and speeds from 0.25× (slow-mo) to 2×. Type a <b>name</b> and
+  <b>description</b> on each; it saves automatically in this browser.
 </p>
 <div class="toolbar">
   <button onclick="exportJSON()">⬇ Export annotations (JSON)</button>
@@ -109,7 +115,6 @@ const GROUPS = [
 const KEY = "salsa-annotations-v1";
 let data = JSON.parse(localStorage.getItem(KEY) || "null");
 if(data === null){
-  // carry over annotations from the earlier Group-3-only gallery, if any
   data = JSON.parse(localStorage.getItem("salsa-group3-v1") || "{}");
   localStorage.setItem(KEY, JSON.stringify(data));
 }
@@ -139,7 +144,19 @@ function render(){
       const card = document.createElement("div");
       card.className = "card";
       card.innerHTML =
-        '<video src="' + s.file + '" loop muted playsinline preload="metadata"></video>' +
+        '<video src="' + s.file + '" controls loop muted playsinline preload="metadata"></video>' +
+        '<div class="controls">' +
+          '<button data-action="restart" title="Restart">⟲ restart</button>' +
+          '<button data-action="back" title="Back 2 seconds">« 2s</button>' +
+          '<button data-action="fwd" title="Forward 2 seconds">2s »</button>' +
+          '<span class="sp">' +
+            '<button data-action="speed" data-speed="0.25">0.25×</button>' +
+            '<button data-action="speed" data-speed="0.5">0.5×</button>' +
+            '<button data-action="speed" data-speed="1" class="on">1×</button>' +
+            '<button data-action="speed" data-speed="1.5">1.5×</button>' +
+            '<button data-action="speed" data-speed="2">2×</button>' +
+          '</span>' +
+        '</div>' +
         '<div class="body">' +
           '<div class="num"><b>' + s.id + '</b> &nbsp; flagged ' + s.range +
             ' &nbsp;·&nbsp; clip ' + s.clip + '</div>' +
@@ -155,16 +172,25 @@ function render(){
     sec.appendChild(grid);
     root.appendChild(sec);
   }
-  // only play videos that are on screen — keeps all clips smooth
-  const io = new IntersectionObserver(function(entries){
-    for(const e of entries){
-      if(e.isIntersecting) e.target.play().catch(function(){});
-      else e.target.pause();
-    }
-  }, {threshold:0.2});
-  document.querySelectorAll("video").forEach(function(v){ io.observe(v); });
   setStatus("ready — edits save automatically");
 }
+
+// per-clip playback controls
+document.addEventListener("click", function(e){
+  const btn = e.target.closest(".controls button");
+  if(!btn) return;
+  const video = btn.closest(".card").querySelector("video");
+  const act = btn.dataset.action;
+  if(act === "restart"){ video.currentTime = 0; video.play(); }
+  else if(act === "back"){ video.currentTime = Math.max(0, video.currentTime - 2); }
+  else if(act === "fwd"){ video.currentTime = Math.min(video.duration || 1e9, video.currentTime + 2); }
+  else if(act === "speed"){
+    video.playbackRate = parseFloat(btn.dataset.speed);
+    const sibs = btn.parentElement.querySelectorAll("button");
+    sibs.forEach(function(b){ b.classList.remove("on"); });
+    btn.classList.add("on");
+  }
+});
 
 document.addEventListener("input", function(e){
   const t = e.target;
